@@ -7,8 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY best_model.pkl .
 COPY feature_cols.pkl .
-COPY step8_api.py .
+COPY app.py .
+COPY step7_dashboard.html .
 
 EXPOSE 7860
 
-CMD ["uvicorn", "step8_api:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["python", "app.py"]
