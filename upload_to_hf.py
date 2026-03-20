@@ -1,7 +1,7 @@
 import os
-from huggingface_hub import HfApi
+from importlib import import_module
 
-api = HfApi()
+api = import_module("huggingface_hub").HfApi()
 token = os.getenv("HF_TOKEN")
 repo = "Gireeshee/nyc-311-response-predictor"
 

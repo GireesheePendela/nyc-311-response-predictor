@@ -7,3 +7,4 @@ scikit-learn
 xgboost
 python-dotenv
 gradio
+huggingface_hub

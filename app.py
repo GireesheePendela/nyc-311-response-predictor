@@ -1,9 +1,11 @@
-import gradio as gr
+from importlib import import_module
 import numpy as np
 import pandas as pd
 import joblib
 from pathlib import Path
 import html
+
+gr = import_module("gradio")
 
 # ── LOAD MODEL ────────────────────────────────────────────────────────────────
 model        = joblib.load("best_model.pkl")
