@@ -261,4 +261,4 @@ def predict(req: ComplaintRequest):
 
 # ── RUN ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    uvicorn.run("step8_api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("step8_api:app", host="0.0.0.0", port=7860, reload=True)
