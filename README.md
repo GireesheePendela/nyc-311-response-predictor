@@ -14,7 +14,7 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 ## 🚀 Live App
 
 - 🌐 Hugging Face Space: https://huggingface.co/spaces/Gireeshee/nyc-311-response-predictor
-- 🔗 Direct URL: https://gireeshee-nyc-311-response-predictor.hf.space
+- 🔗 Direct URL: [https://gireeshee-nyc-311-response-predictor.hf.space](https://gp05-nyc-311-response-predictor.hf.space/)
 
 ## 📦 What this repo includes
 
