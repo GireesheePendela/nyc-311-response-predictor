@@ -66,6 +66,23 @@ Remove-Item Env:HF_TOKEN
 - **🚧 Space build fails with missing file**
 	- Re-run `upload_to_hf.py` and restart the Space
 
+## ⚙️ Technical Skills
+
+| Category | Technologies |
+|---|---|
+| **Programming Language** | Python 3.11 |
+| **Data Manipulation** | pandas, NumPy |
+| **Machine Learning** | scikit-learn (Linear Regression, Random Forest), XGBoost |
+| **Data Visualization** | Matplotlib (static EDA charts), Plotly (interactive dashboard) |
+| **Database** | PostgreSQL, SQLAlchemy, psycopg2 |
+| **API Development** | FastAPI, Uvicorn |
+| **Web UI / ML App** | Gradio |
+| **Model Serialization** | joblib |
+| **Environment Management** | python-dotenv |
+| **Containerization** | Docker |
+| **Deployment** | Hugging Face Spaces, huggingface_hub |
+| **Scripting & Automation** | PowerShell, SQL |
+
 ## 👤 Author
 
 Built by **Gireeshee Pendela**.
