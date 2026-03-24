@@ -3,7 +3,7 @@ from importlib import import_module
 
 api = import_module("huggingface_hub").HfApi()
 token = os.getenv("HF_TOKEN")
-repo = "Gireeshee/nyc-311-response-predictor"
+repo = os.getenv("HF_SPACE_REPO", "Gireeshee/nyc-311-response-predictor")
 
 if not token:
     raise SystemExit("Missing HF_TOKEN environment variable")
