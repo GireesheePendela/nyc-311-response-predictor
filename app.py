@@ -83,6 +83,96 @@ APP_THEME = gr.themes.Soft(
     font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "ui-monospace", "monospace"],
 )
 
+CUSTOM_CSS = """
+body {
+    background: radial-gradient(circle at top right, #18243f 0%, #0b1222 42%, #080d18 100%);
+}
+
+.gradio-container {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 14px 18px !important;
+}
+
+.hero-card {
+    background: linear-gradient(135deg, rgba(76,114,176,0.16), rgba(100,181,205,0.10));
+    border: 1px solid rgba(148,163,184,0.28);
+    border-radius: 16px;
+    padding: 16px 20px 10px 20px;
+    margin-bottom: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 8px 0 10px 0;
+}
+
+.quick-stat {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148,163,184,0.22);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.quick-stat-value {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: #e8eefc;
+    line-height: 1.2;
+}
+
+.quick-stat-label {
+    font-size: 0.78rem;
+    color: #b8c6e3;
+    margin-top: 2px;
+}
+
+.subtle-note {
+    color: #c3d2ef;
+    font-size: 0.93rem;
+    margin-top: 6px;
+}
+
+.dashboard-frame iframe {
+    border-radius: 12px !important;
+    border: 1px solid rgba(148,163,184,0.24) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.predict-card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(148,163,184,0.25);
+    border-radius: 14px;
+    padding: 8px 8px 2px 8px;
+}
+
+.prediction-box {
+    background: rgba(10, 16, 30, 0.6);
+    border: 1px solid rgba(148,163,184,0.24);
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+
+.action-row {
+    margin-top: 6px;
+}
+
+.action-row button {
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+}
+
+@media (max-width: 900px) {
+    .quick-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+"""
+
 
 def get_dashboard_embed_html():
     dashboard_path = Path("step7_dashboard.html")
@@ -192,17 +282,37 @@ Please fill in these fields before predicting:
     return result
 
 # ── GRADIO UI ─────────────────────────────────────────────────────────────────
-with gr.Blocks(title="NYC 311 Resolution Time Predictor") as demo:
+with gr.Blocks(
+    title="NYC 311 Resolution Time Predictor"
+) as demo:
 
-    gr.Markdown("""
-    # 🗽 NYC 311 Response Intelligence App
-    **Workflow: explore response patterns first, then generate a prediction**
-
-    Dataset: 589,802 complaints (Jan–Mar 2026) · Model: Random Forest · R² = 0.78
+    gr.HTML("""
+    <div class="hero-card">
+        <h1 style="margin:0 0 4px 0; font-size:2rem;">🗽 NYC 311 Response Intelligence App</h1>
+        <p style="margin:0 0 8px 0; font-size:1rem; color:#d1def7;"><b>Workflow:</b> explore response patterns first, then generate a prediction.</p>
+        <div class="quick-stats">
+            <div class="quick-stat">
+                <div class="quick-stat-value">589,802</div>
+                <div class="quick-stat-label">Complaints in training data</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-value">Random Forest</div>
+                <div class="quick-stat-label">Production model</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-value">R² = 0.78</div>
+                <div class="quick-stat-label">Overall fit quality</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-value">Jan–Mar 2026</div>
+                <div class="quick-stat-label">Training time window</div>
+            </div>
+        </div>
+        <p class="subtle-note">Use <b>Dashboard Insights</b> to understand response patterns, then use <b>Resolution Predictor</b> for new complaints.</p>
+    </div>
     """)
 
     gr.Markdown("""
-    ℹ️ Use **Dashboard Insights** to understand response patterns, then use **Resolution Predictor** to estimate resolution time for a new complaint.
     Predictions for months outside Jan–Mar are extrapolations and may be less reliable.
     """)
 
@@ -212,7 +322,7 @@ with gr.Blocks(title="NYC 311 Resolution Time Predictor") as demo:
             ### 📊 Interactive Insights Dashboard
             Review how response times vary by agency, borough, day/hour, and complaint category before running a prediction.
             """)
-            gr.HTML(get_dashboard_embed_html())
+            gr.HTML(get_dashboard_embed_html(), elem_classes=["dashboard-frame"])
 
         with gr.Tab("Resolution Predictor"):
             gr.Markdown("""
@@ -220,23 +330,24 @@ with gr.Blocks(title="NYC 311 Resolution Time Predictor") as demo:
             Fill all required fields (*) and click **Predict Resolution Time**.
             """)
 
-            with gr.Row():
-                with gr.Column():
-                    gr.Markdown("#### 🧾 Complaint Details")
-                    agency       = gr.Dropdown(choices=AGENCIES,      label="Agency *",       value=None)
-                    borough      = gr.Dropdown(choices=BOROUGHS,      label="Borough *",      value=None)
-                    problem_type = gr.Dropdown(choices=PROBLEM_TYPES, label="Problem Type *", value=None)
-                    channel      = gr.Dropdown(choices=CHANNELS,      label="Channel *",      value=None)
+            with gr.Group(elem_classes=["predict-card"]):
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("#### 🧾 Complaint Details")
+                        agency       = gr.Dropdown(choices=AGENCIES,      label="Agency *",       value=None)
+                        borough      = gr.Dropdown(choices=BOROUGHS,      label="Borough *",      value=None)
+                        problem_type = gr.Dropdown(choices=PROBLEM_TYPES, label="Problem Type *", value=None)
+                        channel      = gr.Dropdown(choices=CHANNELS,      label="Channel *",      value=None)
 
-                with gr.Column():
-                    gr.Markdown("#### 📅 Filing Time")
-                    hour  = gr.Slider(minimum=0,  maximum=23, value=9,  step=1,  label="Hour of Day * (0=midnight, 12=noon)")
-                    day   = gr.Dropdown(choices=DAYS, label="Day of Week *", value=None)
-                    month = gr.Slider(minimum=1,  maximum=12, value=1,  step=1,  label="Month * (1=Jan, 12=Dec)")
+                    with gr.Column():
+                        gr.Markdown("#### 📅 Filing Time")
+                        hour  = gr.Slider(minimum=0,  maximum=23, value=9,  step=1,  label="Hour of Day * (0=midnight, 12=noon)")
+                        day   = gr.Dropdown(choices=DAYS, label="Day of Week *", value=None)
+                        month = gr.Slider(minimum=1,  maximum=12, value=1,  step=1,  label="Month * (1=Jan, 12=Dec)")
 
-            output = gr.Markdown(label="Prediction")
+            output = gr.Markdown(label="Prediction", elem_classes=["prediction-box"])
 
-            with gr.Row():
+            with gr.Row(elem_classes=["action-row"]):
                 predict_btn = gr.Button("🔍 Predict Resolution Time", variant="primary")
                 clear_btn = gr.ClearButton([agency, borough, problem_type, channel, hour, day, month, output], value="Reset")
 
@@ -254,4 +365,4 @@ with gr.Blocks(title="NYC 311 Resolution Time Predictor") as demo:
             - **DSNY + Missed Collection + QUEENS + Wednesday 8am** → ~1-2 days
             """)
 
-demo.launch(server_name="0.0.0.0", server_port=7860, theme=APP_THEME)
+demo.launch(server_name="0.0.0.0", server_port=7860, theme=APP_THEME, css=CUSTOM_CSS)

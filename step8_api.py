@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 import uvicorn
+import socket
 
 # ── LOAD MODEL ────────────────────────────────────────────────────────────────
 print("Loading model...")
@@ -103,14 +104,14 @@ app.add_middleware(
 
 # ── REQUEST / RESPONSE MODELS ─────────────────────────────────────────────────
 class ComplaintRequest(BaseModel):
-    agency            : str = Field(..., example="HPD")
-    borough           : str = Field(..., example="BROOKLYN")
-    problem_type      : str = Field(..., example="HEAT/HOT WATER")
-    location_type     : Optional[str] = Field("UNKNOWN", example="RESIDENTIAL BUILDING")
-    channel           : Optional[str] = Field("ONLINE",  example="ONLINE")
-    hour_of_day       : int  = Field(..., ge=0, le=23,  example=9)
-    day_of_week       : int  = Field(..., ge=0, le=6,   example=0)
-    month             : int  = Field(..., ge=1, le=12,  example=1)
+    agency            : str = Field(..., json_schema_extra={"example": "HPD"})
+    borough           : str = Field(..., json_schema_extra={"example": "BROOKLYN"})
+    problem_type      : str = Field(..., json_schema_extra={"example": "HEAT/HOT WATER"})
+    location_type     : Optional[str] = Field("UNKNOWN", json_schema_extra={"example": "RESIDENTIAL BUILDING"})
+    channel           : Optional[str] = Field("ONLINE",  json_schema_extra={"example": "ONLINE"})
+    hour_of_day       : int  = Field(..., ge=0, le=23, json_schema_extra={"example": 9})
+    day_of_week       : int  = Field(..., ge=0, le=6, json_schema_extra={"example": 0})
+    month             : int  = Field(..., ge=1, le=12, json_schema_extra={"example": 1})
 
 class PredictionResponse(BaseModel):
     predicted_hours   : float
@@ -256,9 +257,21 @@ def predict(req: ComplaintRequest):
         predicted_days  = pred_days,
         confidence_band = f"{low}h – {high}h",
         summary         = summary,
-        inputs          = req.dict()
+        inputs          = req.model_dump()
     )
 
 # ── RUN ───────────────────────────────────────────────────────────────────────
+def find_free_port(host: str, candidate_ports: list[int]) -> int:
+    for port in candidate_ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if sock.connect_ex((host, port)) != 0:
+                return port
+    raise RuntimeError(f"No free ports available in candidates: {candidate_ports}")
+
+
 if __name__ == "__main__":
-    uvicorn.run("step8_api:app", host="0.0.0.0", port=7860, reload=True)
+    host = "127.0.0.1"
+    port = find_free_port(host, [8000, 8001, 8002, 8003, 8080])
+    print(f"Starting API at http://{host}:{port} (docs: http://{host}:{port}/docs)")
+    uvicorn.run("step8_api:app", host=host, port=port, reload=True)

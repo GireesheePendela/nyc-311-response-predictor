@@ -293,16 +293,19 @@ fig_error.update_layout(
 
 # Chart 3: Feature importance
 top15 = importances.head(15).sort_values(ascending=True)
+top15_pct = (top15 * 100).round(1)
+top15_labels = [f"{value:.1f}%" for value in top15_pct.values]
 bar_colors = [COLORS["red"] if i == len(top15) - 1
               else COLORS["blue"] for i in range(len(top15))]
 fig_importance = go.Figure(go.Bar(
-    x=top15.values * 100,
+    x=top15_pct.values,
     y=top15.index,
     orientation="h",
     marker_color=bar_colors,
-    text=[f"{v*100:.1f}%" for v in top15.values],
+    text=top15_labels,
+    customdata=top15_labels,
     textposition="outside",
-    hovertemplate="%{y}: %{x:.2f}%<extra></extra>"
+    hovertemplate="%{y}: %{customdata}<extra></extra>"
 ))
 fig_importance.update_layout(
     **dark_layout("Top 15 Feature Importances (Random Forest)"),
@@ -440,38 +443,67 @@ r2_scores  = [0.7014, 0.7882, 0.7846]
 mae_scores = [40.3,   34.5,   35.5]
 
 fig_compare.add_trace(go.Bar(
-    x=models, y=r2_scores,
-    name="R²",
-    marker_color=COLORS["blue"],
-    text=[f"{v:.4f}" for v in r2_scores],
-    textposition="outside",
-), secondary_y=False)
-fig_compare.add_trace(go.Bar(
     x=models, y=mae_scores,
     name="MAE (hrs)",
     marker_color=COLORS["orange"],
+    opacity=0.85,
     text=[f"{v:.1f}h" for v in mae_scores],
     textposition="outside",
+    hovertemplate="%{x}<br>MAE: %{y:.1f}h<extra></extra>",
+), secondary_y=False)
+fig_compare.add_trace(go.Scatter(
+    x=models, y=r2_scores,
+    mode="lines+markers+text",
+    name="R²",
+    line=dict(color=COLORS["blue"], width=3),
+    marker=dict(size=10, color=COLORS["blue"]),
+    text=[f"{v:.4f}" for v in r2_scores],
+    textposition="top center",
+    hovertemplate="%{x}<br>R²: %{y:.4f}<extra></extra>",
 ), secondary_y=True)
 fig_compare.update_layout(
-    title="Model Comparison: R² and MAE",
+    title="Model Comparison: Accuracy vs Error",
     paper_bgcolor=COLORS["bg"],
     plot_bgcolor=COLORS["card"],
     font=dict(color=COLORS["text"]),
     barmode="group",
-    legend=dict(bgcolor=COLORS["card"]),
-    xaxis=dict(gridcolor=COLORS["grid"]),
+    legend=dict(
+        bgcolor=COLORS["card"],
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="left",
+        x=0
+    ),
+    xaxis=dict(gridcolor=COLORS["grid"], title="Model"),
 )
-fig_compare.update_yaxes(title_text="R² Score",    secondary_y=False,
-                         range=[0, 1])
-fig_compare.update_yaxes(title_text="MAE (hours)", secondary_y=True,
-                         range=[0, 60])
+fig_compare.update_yaxes(
+    title_text="MAE (hours) — lower is better",
+    secondary_y=False,
+    range=[0, max(mae_scores) + 15],
+    gridcolor=COLORS["grid"]
+)
+fig_compare.update_yaxes(
+    title_text="R² Score — higher is better",
+    secondary_y=True,
+    range=[0.65, 0.83],
+    showgrid=False
+)
 
 # ── 6. ASSEMBLE HTML ──────────────────────────────────────────────────────────
 print("\n[5/8] Assembling HTML dashboard...")
 
 def fig_to_html(fig):
     return fig.to_html(full_html=False, include_plotlyjs=False)
+
+def chart_card(fig, heading, context):
+    return f"""
+        <div class="chart-card">
+            <div class="chart-title">{heading}</div>
+            <div class="chart-context">{context}</div>
+            {fig_to_html(fig)}
+        </div>
+    """
 
 html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -546,6 +578,18 @@ html = f"""<!DOCTYPE html>
             padding: 16px;
             border: 1px solid #2a2d3a;
         }}
+        .chart-title {{
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }}
+        .chart-context {{
+            color: #b9becd;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            margin-bottom: 12px;
+        }}
     </style>
 </head>
 <body>
@@ -576,30 +620,70 @@ html = f"""<!DOCTYPE html>
 
     <div class="section-title">Model Performance</div>
     <div class="grid-2">
-        <div class="chart-card">{fig_to_html(fig_scatter)}</div>
-        <div class="chart-card">{fig_to_html(fig_error)}</div>
+        {chart_card(
+            fig_scatter,
+            "Predicted vs Actual Time",
+            "Each dot is one complaint. Left-to-right is the real time; bottom-to-top is the model estimate. Dots near the dashed line are accurate; dots far away are larger misses."
+        )}
+        {chart_card(
+            fig_error,
+            "Prediction Error Distribution",
+            "This shows how far predictions are from reality. The center line at 0 means no error. More bars near 0 means the model is usually close; left side means overestimation, right side means underestimation."
+        )}
     </div>
     <div class="grid-2">
-        <div class="chart-card">{fig_to_html(fig_importance)}</div>
-        <div class="chart-card">{fig_to_html(fig_compare)}</div>
+        {chart_card(
+            fig_importance,
+            "What Drives Predictions",
+            "Longer bars have more influence on predicted resolution time. Use this to see which complaint details matter most when estimating how long a case will take."
+        )}
+        {chart_card(
+            fig_compare,
+            "Model Comparison",
+            "Orange bars show average prediction error in hours (lower is better). Blue line shows overall fit R² (higher is better). The strongest model has a lower orange bar and a higher blue point."
+        )}
     </div>
 
     <div class="section-title">Heatmaps</div>
     <div class="grid-1">
-        <div class="chart-card">{fig_to_html(fig_heatmap1)}</div>
+        {chart_card(
+            fig_heatmap1,
+            "Resolution Time by Day and Hour",
+            "Each cell shows the median time to close complaints for that day/hour combination. Green shades are faster; red shades are slower. This helps spot when service is typically quicker or slower."
+        )}
     </div>
     <div class="grid-1">
-        <div class="chart-card">{fig_to_html(fig_heatmap2)}</div>
+        {chart_card(
+            fig_heatmap2,
+            "Resolution Time by Borough and Agency",
+            "Rows are agencies and columns are boroughs. Each cell is the median resolution time for that pairing. Compare across a row to see location differences, or down a column to compare agencies."
+        )}
     </div>
 
     <div class="section-title">Agency & Complaint Analysis</div>
     <div class="grid-2">
-        <div class="chart-card">{fig_to_html(fig_agency)}</div>
-        <div class="chart-card">{fig_to_html(fig_animated)}</div>
+        {chart_card(
+            fig_agency,
+            "Agency Resolution Speed",
+            "Shorter bars mean faster typical resolution times. This is a side-by-side view of agency performance based on median hours, so extreme outliers have less impact."
+        )}
+        {chart_card(
+            fig_animated,
+            "Daily Complaint Volume",
+            "Each line tracks how many complaints each agency receives per day. Rising lines indicate busier periods; dips indicate quieter days. Use this to understand workload patterns over time."
+        )}
     </div>
     <div class="grid-2">
-        <div class="chart-card">{fig_to_html(fig_types)}</div>
-        <div class="chart-card">{fig_to_html(fig_fastest)}</div>
+        {chart_card(
+            fig_types,
+            "Slowest Complaint Types",
+            "These complaint types usually take the longest to resolve (among categories with enough volume). Longer bars mean longer typical wait times."
+        )}
+        {chart_card(
+            fig_fastest,
+            "Fastest Complaint Types",
+            "These complaint types are typically resolved quickest (among categories with enough volume). Shorter times can indicate standardized or easier workflows."
+        )}
     </div>
 
 </body>
