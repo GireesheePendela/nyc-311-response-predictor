@@ -1,7 +1,7 @@
 """
 NYC 311 Resolution Time Predictor
 Step 8: FastAPI Deployment
-- Loads best_model.pkl and feature_cols.pkl
+- Loads best_model.pkl, feature_cols.pkl and target_encodings.pkl
 - Exposes POST /predict endpoint
 - Returns predicted resolution time in hours
 """
@@ -38,55 +38,13 @@ VALID_CHANNELS = [
     "MOBILE", "ONLINE", "OTHER", "PHONE"
 ]
 
-# Target encoding means from Step 4
-# These are approximate median log_resolution_hours per problem type
-# In production you'd load this from the DB, but for the API we hardcode top types
-PROBLEM_TYPE_ENCODINGS = {
-    "HEAT/HOT WATER"           : 4.20,
-    "Noise - Residential"      : 1.10,
-    "Illegal Parking"          : 1.50,
-    "UNSANITARY CONDITION"     : 5.35,
-    "Noise - Commercial"       : 1.20,
-    "PLUMBING"                 : 4.80,
-    "Noise - Vehicle"          : 1.10,
-    "Blocked Driveway"         : 1.40,
-    "PAINT/PLASTER"            : 4.90,
-    "Street Light Condition"   : 5.30,
-    "DOOR/WINDOW"              : 5.30,
-    "Noise - Street/Sidewalk"  : 1.15,
-    "FLOORING/STAIRS"          : 5.30,
-    "Dirty Conditions"         : 3.80,
-    "Derelict Vehicle"         : 3.90,
-    "WATER LEAK"               : 5.10,
-    "Missed Collection"        : 3.75,
-    "Cannabis Retailer"        : 6.70,
-    "Boilers"                  : 6.70,
-    "Smoking or Vaping"        : 6.26,
-    "For Hire Vehicle Complaint": 6.25,
-    "ELEVATOR"                 : 5.37,
-    "APPLIANCE"                : 5.35,
-    "Vendor Enforcement"       : 0.30,
-    "Traffic"                  : 0.40,
-    "Panhandling"              : 0.85,
-    "Drug Activity"            : 0.95,
-    "Noise - Park"             : 0.95,
-    "Illegal Fireworks"        : 0.90,
-}
-DEFAULT_ENCODING = 3.50  # fallback for unknown problem types
-
-LOCATION_TYPE_ENCODINGS = {
-    "RESIDENTIAL BUILDING"     : 4.50,
-    "Street/Sidewalk"          : 2.10,
-    "Residential Building/House": 4.50,
-    "Store/Commercial"         : 2.80,
-    "Club/Bar/Restaurant"      : 1.50,
-    "Park/Playground"          : 2.20,
-    "Street"                   : 2.00,
-    "Highway"                  : 2.50,
-    "Bridge"                   : 3.00,
-    "UNKNOWN"                  : 3.50,
-}
-DEFAULT_LOCATION_ENCODING = 3.50
+# Target encodings (category → mean log_resolution_hours), fit on the training
+# split in step 6 and saved alongside the model
+target_encodings = joblib.load("target_encodings.pkl")
+PROBLEM_TYPE_ENCODINGS  = target_encodings["problem_type"]
+LOCATION_TYPE_ENCODINGS = target_encodings["location_type"]
+DEFAULT_ENCODING          = target_encodings["global_mean"]  # fallback for unknown problem types
+DEFAULT_LOCATION_ENCODING = target_encodings["global_mean"]
 
 # ── APP ───────────────────────────────────────────────────────────────────────
 app = FastAPI(

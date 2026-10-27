@@ -8,6 +8,7 @@ import numpy as np
 from pathlib import Path
 import os
 import joblib
+import json
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -27,6 +28,11 @@ except ModuleNotFoundError as exc:
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+from plotly.offline import get_plotlyjs_version
+
+# Pin plotly.js to the version this plotly.py build targets. "plotly-latest" on the
+# CDN is frozen at v1.58 and can't decode the typed arrays plotly.py 6 emits.
+PLOTLY_JS_VERSION = get_plotlyjs_version()
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 load_dotenv(dotenv_path=Path(".env"))
@@ -74,6 +80,8 @@ predictions_df["error_hours"]     = pd.to_numeric(predictions_df["error_hours"],
 
 model        = joblib.load("best_model.pkl")
 feature_cols = joblib.load("feature_cols.pkl")
+# Reported numbers come from step 6 (validation + test) and compress_model.py (deployed)
+metrics      = json.loads(Path("model_metrics.json").read_text(encoding="utf-8"))
 
 importances = pd.Series(
     model.feature_importances_,
@@ -121,6 +129,31 @@ borough_agency_df = pd.read_sql("""
       AND agency IN ('HPD','NYPD','DSNY','DOT','DEP','DOB','DPR')
     GROUP BY borough, agency
 """, engine)
+
+# Model error by segment (held-out test predictions only)
+ERROR_BY_SEGMENT_SQL = """
+    SELECT
+        c.{segment} AS segment,
+        COUNT(*) AS complaints,
+        ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP
+              (ORDER BY ABS(p.predicted_hours - p.actual_hours))::numeric, 1)::float AS median_abs_error,
+        ROUND(AVG(ABS(p.predicted_hours - p.actual_hours))::numeric, 1)::float AS mae_hours,
+        ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP
+              (ORDER BY p.actual_hours)::numeric, 1)::float AS median_actual
+    FROM nyc311_predictions p
+    JOIN nyc311_clean c ON c.unique_key = p.unique_key
+    WHERE c.{segment} NOT IN ('UNSPECIFIED')
+    GROUP BY c.{segment}
+    HAVING COUNT(*) >= 500
+    ORDER BY median_abs_error DESC
+"""
+error_borough_df = pd.read_sql(ERROR_BY_SEGMENT_SQL.format(segment="borough"), engine)
+error_agency_df  = pd.read_sql(ERROR_BY_SEGMENT_SQL.format(segment="agency"),  engine)
+
+print("      Model error by borough (test set):")
+for _, r in error_borough_df.iterrows():
+    print(f"        {r['segment']:<15} median |err| {r['median_abs_error']:>6.1f}h   "
+          f"MAE {r['mae_hours']:>6.1f}h   median actual {r['median_actual']:>6.1f}h")
 
 channel_df = pd.read_sql("""
     SELECT
@@ -438,9 +471,9 @@ fig_fastest.update_layout(
 
 # Chart 10: Model comparison
 fig_compare = make_subplots(specs=[[{"secondary_y": True}]])
-models     = ["Linear Regression", "Random Forest", "XGBoost"]
-r2_scores  = [0.7014, 0.7882, 0.7846]
-mae_scores = [40.3,   34.5,   35.5]
+models     = list(metrics["validation"])
+r2_scores  = [metrics["validation"][m]["r2"]        for m in models]
+mae_scores = [metrics["validation"][m]["mae_hours"] for m in models]
 
 fig_compare.add_trace(go.Bar(
     x=models, y=mae_scores,
@@ -462,7 +495,7 @@ fig_compare.add_trace(go.Scatter(
     hovertemplate="%{x}<br>R²: %{y:.4f}<extra></extra>",
 ), secondary_y=True)
 fig_compare.update_layout(
-    title="Model Comparison: Accuracy vs Error",
+    title="Model Comparison (validation set): Accuracy vs Error",
     paper_bgcolor=COLORS["bg"],
     plot_bgcolor=COLORS["card"],
     font=dict(color=COLORS["text"]),
@@ -486,15 +519,46 @@ fig_compare.update_yaxes(
 fig_compare.update_yaxes(
     title_text="R² Score — higher is better",
     secondary_y=True,
-    range=[0.65, 0.83],
+    range=[min(r2_scores) - 0.05, max(r2_scores) + 0.04],
     showgrid=False
 )
+
+# Chart 11/12: Where the model misses — typical error vs typical resolution time
+def error_segment_fig(seg_df, title, x_title):
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=seg_df["segment"], y=seg_df["median_actual"],
+        name="Median actual time",
+        marker_color=COLORS["blue"], opacity=0.85,
+        hovertemplate="%{x}<br>Median actual: %{y:.1f}h<extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        x=seg_df["segment"], y=seg_df["median_abs_error"],
+        name="Median absolute error",
+        marker_color=COLORS["orange"], opacity=0.85,
+        customdata=seg_df[["mae_hours", "complaints"]],
+        hovertemplate=("%{x}<br>Median |error|: %{y:.1f}h<br>"
+                       "MAE: %{customdata[0]:.1f}h<br>Test complaints: %{customdata[1]:,}<extra></extra>"),
+    ))
+    fig.update_layout(
+        **dark_layout(title),
+        barmode="group",
+        xaxis_title=x_title,
+        yaxis_title="Hours",
+        legend=dict(bgcolor=COLORS["card"], orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    )
+    return fig
+
+fig_err_borough = error_segment_fig(error_borough_df, "Model Error by Borough", "Borough")
+fig_err_agency  = error_segment_fig(error_agency_df,  "Model Error by Agency",  "Agency")
 
 # ── 6. ASSEMBLE HTML ──────────────────────────────────────────────────────────
 print("\n[5/8] Assembling HTML dashboard...")
 
 def fig_to_html(fig):
-    return fig.to_html(full_html=False, include_plotlyjs=False)
+    return fig.to_html(full_html=False, include_plotlyjs=False,
+                       default_width="100%",
+                       config={"responsive": True, "displaylogo": False})
 
 def chart_card(fig, heading, context):
     return f"""
@@ -511,7 +575,7 @@ html = f"""<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NYC 311 Resolution Time Predictor</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-{PLOTLY_JS_VERSION}.min.js" charset="utf-8"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -534,7 +598,7 @@ html = f"""<!DOCTYPE html>
         }}
         .stats-row {{
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
             margin-bottom: 32px;
         }}
@@ -565,7 +629,7 @@ html = f"""<!DOCTYPE html>
         }}
         .grid-2 {{
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }}
@@ -573,6 +637,7 @@ html = f"""<!DOCTYPE html>
             margin-bottom: 20px;
         }}
         .chart-card {{
+            min-width: 0;
             background: {COLORS["card"]};
             border-radius: 12px;
             padding: 16px;
@@ -595,25 +660,25 @@ html = f"""<!DOCTYPE html>
 <body>
     <h1>🗽 NYC 311 Resolution Time Predictor</h1>
     <p class="subtitle">
-        Machine learning model trained on 589,802 complaints · Jan 1, 2026 to Mar 3, 2026 ·
-        Random Forest · R² = 0.79
+        Machine learning model trained on {metrics["rows"]:,} complaints · Jan 1, 2026 to Mar 3, 2026 ·
+        {metrics["best_model"]} · held-out test R² = {metrics["test"]["r2"]:.2f}
     </p>
 
     <div class="stats-row">
         <div class="stat-card">
-            <div class="stat-value">589,802</div>
-            <div class="stat-label">Training Complaints</div>
+            <div class="stat-value">{metrics["rows"]:,}</div>
+            <div class="stat-label">Complaints Modeled</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">0.79</div>
-            <div class="stat-label">R² Score</div>
+            <div class="stat-value">{metrics["test"]["r2"]:.2f}</div>
+            <div class="stat-label">R² Score (held-out test)</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">34.5h</div>
-            <div class="stat-label">Mean Absolute Error</div>
+            <div class="stat-value">{metrics["test"]["mae_hours"]:.1f}h</div>
+            <div class="stat-label">Mean Absolute Error (test)</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">84%</div>
+            <div class="stat-value">{importances.get("problem_type_encoded", 0):.0%}</div>
             <div class="stat-label">Driven by Problem Type</div>
         </div>
     </div>
@@ -641,6 +706,20 @@ html = f"""<!DOCTYPE html>
             fig_compare,
             "Model Comparison",
             "Orange bars show average prediction error in hours (lower is better). Blue line shows overall fit R² (higher is better). The strongest model has a lower orange bar and a higher blue point."
+        )}
+    </div>
+
+    <div class="section-title">Where the Model Misses</div>
+    <div class="grid-2">
+        {chart_card(
+            fig_err_borough,
+            "Model Error by Borough",
+            "Held-out test complaints only. Blue is the typical (median) real resolution time; orange is the typical size of the model's miss. Compare the two bars to see where errors are large relative to how long complaints usually take."
+        )}
+        {chart_card(
+            fig_err_agency,
+            "Model Error by Agency",
+            "Same comparison by agency (agencies with at least 500 test complaints). Agencies with slow, variable workloads tend to have larger misses in hours; hover for mean absolute error and sample size."
         )}
     </div>
 

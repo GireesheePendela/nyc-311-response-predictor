@@ -28,10 +28,29 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 
 ## 🤖 Model context
 
-- Training window: Jan–Mar 2026
-- Trained model: Random Forest Regressor
-- Reported performance: R² ≈ 0.78–0.79
+- Data: 589,802 NYC 311 complaints (NYC Open Data, Jan–Mar 2026), loaded into PostgreSQL and cleaned
+- Target: `log1p(resolution_hours)`; metrics in hours are reported after converting back
 - Month selector supports 1–12; months outside Jan–Mar are extrapolations
+
+## 🧪 Methodology
+
+- **Split:** 60% train / 20% validation / 20% held-out test (`random_state=42`).
+- **Model selection:** Linear Regression, Random Forest and XGBoost are compared on the validation set only. The winner is refit on train+validation and scored **once** on the test set.
+- **Leakage control:** `problem_type` and `location_type` are target-encoded *after* the split, using training rows only. Training rows are encoded out-of-fold (5-fold) with smoothing toward the global mean, so no row's feature contains its own target. Imputation medians are also train-only. See `target_encoding.py`.
+- **Single source of truth:** `step6_model.py` and `compress_model.py` write `model_metrics.json`; the dashboard reads its numbers from there.
+
+| Model | Validation R² | Validation MAE (hrs) |
+|---|---|---|
+| Linear Regression | 0.703 | 40.0 |
+| **Random Forest** | **0.787** | **34.8** |
+| XGBoost | 0.785 | 35.4 |
+
+| Final scores (held-out test) | R² | MAE (hrs) |
+|---|---|---|
+| Random Forest, 200 trees | 0.789 | 34.3 |
+| Deployed Random Forest (25 trees, compressed to 0.7 MB for the Space) | 0.780 | 35.4 |
+
+**Error analysis:** the dashboard breaks test-set error down by borough and agency. Absolute error is largest in the Bronx and Manhattan, where complaints take longest (median miss ≈ 9–10 h against a median resolution time of ≈ 22 h). Queens and Staten Island have the smallest misses in hours but the largest relative to their typical resolution time.
 
 ## 💻 Run locally
 

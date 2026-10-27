@@ -93,22 +93,15 @@ print(f"      resolution_hours     → skewed (mean={df['resolution_hours'].mean
 print(f"      log_resolution_hours → normalised (mean={df['log_resolution_hours'].mean():.2f}, "
       f"median={df['log_resolution_hours'].median():.2f})")
 
-# ── 4. TARGET ENCODING: problem_type ─────────────────────────────────────────
-print("\n[4/6] Target encoding problem_type (171 unique values)...")
+# ── 4. HIGH-CARDINALITY CATEGORICALS: problem_type, location_type ────────────
+print("\n[4/6] Keeping problem_type / location_type raw for target encoding...")
 
-# Target encoding = replace each category with the mean resolution hours for that category
-# Using log_resolution_hours as the target to be consistent
-problem_type_means = df.groupby("problem_type")["log_resolution_hours"].mean()
-df["problem_type_encoded"] = df["problem_type"].map(problem_type_means)
-
-# Also encode location_type (116 unique)
-location_type_means = df.groupby("location_type")["log_resolution_hours"].mean()
-df["location_type_encoded"] = df["location_type"].map(location_type_means)
-
-print(f"      problem_type_encoded : mean per problem type (top 5 slowest):")
-top5 = problem_type_means.sort_values(ascending=False).head(5)
-for name, val in top5.items():
-    print(f"        {name:<45} log_hours={val:.2f} ({np.expm1(val):.0f} hrs)")
+# Target encoding (category → mean log_resolution_hours) is NOT done here.
+# Computing it on the full table would leak each test row's own target into
+# its features. step6_model.py fits the encodings on the training split only.
+for col in ["problem_type", "location_type"]:
+    df[col] = df[col].fillna("UNKNOWN")
+    print(f"      {col:<14}: {df[col].nunique()} unique values")
 
 # ── 5. ONE-HOT ENCODING: agency, borough, channel ────────────────────────────
 print("\n[5/6] One-hot encoding agency, borough, open_data_channel_type...")
@@ -141,17 +134,14 @@ keep_cols = [
     "is_weekend",
     "is_night",
 
-    # Encoded categoricals
-    "problem_type_encoded",
-    "location_type_encoded",
+    # Raw categoricals (target-encoded in step 6 after the train/test split)
+    "problem_type",
+    "location_type",
 ]
 
-# Add all one-hot columns
-onehot_cols = [c for c in df_encoded.columns
-               if c.startswith("agency_") or
-                  c.startswith("borough_") or
-                  c.startswith("channel_")]
-keep_cols += onehot_cols
+# Add all one-hot columns (the ones get_dummies created, so text columns
+# that merely share a prefix, like agency_name, stay out)
+keep_cols += sorted(new_cols)
 
 df_features = df_encoded[keep_cols].copy()
 

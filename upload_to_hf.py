@@ -11,6 +11,7 @@ if not token:
 files = [
     "best_model.pkl",
     "feature_cols.pkl",
+    "target_encodings.pkl",
     "app.py",
     "step7_dashboard.html",
     "requirements.txt",

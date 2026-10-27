@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY best_model.pkl .
 COPY feature_cols.pkl .
+COPY target_encodings.pkl .
 COPY app.py .
 COPY step7_dashboard.html .
 

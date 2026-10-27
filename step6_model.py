@@ -2,9 +2,9 @@
 NYC 311 Resolution Time Predictor
 Step 6: Modeling
 - Loads nyc311_features from PostgreSQL
-- Trains Baseline, Random Forest, XGBoost
-- Evaluates with RMSE, MAE, R²
-- Saves best model to disk
+- Trains Baseline, Random Forest, XGBoost; picks the best on a validation split
+- Refits the winner and scores it once on the held-out test set (RMSE, MAE, R²)
+- Saves best model, target encodings and model_metrics.json to disk
 """
 
 import pandas as pd
@@ -12,6 +12,7 @@ import numpy as np
 from pathlib import Path
 import os
 import joblib
+import json
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -28,11 +29,14 @@ except ModuleNotFoundError as exc:
         "  python step6_model.py"
     ) from exc
 
+from sklearn.base import clone
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from xgboost import XGBRegressor
+
+from target_encoding import TARGET_ENCODED_COLS, fit_transform_train, apply_target_encodings
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 load_dotenv(dotenv_path=Path(".env"))
@@ -82,18 +86,20 @@ print("\n[2/6] Defining features and target...")
 DROP_COLS = ["unique_key", "resolution_hours"]
 TARGET    = "log_resolution_hours"
 
+RAW_CAT_COLS = list(TARGET_ENCODED_COLS)
+
 feature_cols = [c for c in df.columns if c not in DROP_COLS + [TARGET]]
 X = df[feature_cols].copy()
 y = pd.to_numeric(df[TARGET], errors="coerce")
 
-non_numeric_cols = [col for col in X.columns if not pd.api.types.is_numeric_dtype(X[col])]
+non_numeric_cols = [col for col in X.columns
+                    if col not in RAW_CAT_COLS and not pd.api.types.is_numeric_dtype(X[col])]
 if non_numeric_cols:
     X.drop(columns=non_numeric_cols, inplace=True)
     print(f"      Dropped non-numeric features: {non_numeric_cols}")
 
+X[RAW_CAT_COLS] = X[RAW_CAT_COLS].fillna("UNKNOWN")
 X = X.replace([np.inf, -np.inf], np.nan)
-if X.isnull().any().any():
-    X = X.fillna(X.median(numeric_only=True))
 
 valid_mask = y.notna()
 if not valid_mask.all():
@@ -101,19 +107,35 @@ if not valid_mask.all():
     y = y.loc[valid_mask]
     print(f"      Dropped {(~valid_mask).sum():,} rows with null target")
 
-feature_cols = X.columns.tolist()
-
-print(f"      Features : {len(feature_cols)}")
 print(f"      Target   : {TARGET}")
-print(f"      Sample features: {feature_cols[:8]}")
 
-# ── 3. TRAIN / TEST SPLIT ─────────────────────────────────────────────────────
-print("\n[3/6] Splitting into train/test sets (80/20)...")
-X_train, X_test, y_train, y_test = train_test_split(
+# ── 3. TRAIN / VALIDATION / TEST SPLIT ────────────────────────────────────────
+print("\n[3/6] Splitting into train/validation/test sets (60/20/20)...")
+# Test set is held out until the very end: models are compared on validation,
+# and only the chosen model is scored on test, once.
+X_train_full, X_test, y_train_full, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
-print(f"      Train : {len(X_train):,} rows")
-print(f"      Test  : {len(X_test):,} rows")
+X_fit, X_val, y_fit, y_val = train_test_split(
+    X_train_full, y_train_full, test_size=0.25, random_state=42
+)
+print(f"      Train      : {len(X_fit):,} rows")
+print(f"      Validation : {len(X_val):,} rows")
+print(f"      Test       : {len(X_test):,} rows")
+
+
+def encode_split(X_tr, y_tr, X_eval):
+    """Target-encode and impute using training rows only (no eval target leaks in)."""
+    X_tr, encodings = fit_transform_train(X_tr, y_tr)
+    medians = X_tr.median(numeric_only=True)
+    X_eval  = apply_target_encodings(X_eval, encodings).fillna(medians)
+    return X_tr.fillna(medians), X_eval, encodings
+
+
+X_fit, X_val, _ = encode_split(X_fit, y_fit, X_val)
+feature_cols = X_fit.columns.tolist()
+print(f"      Features : {len(feature_cols)}")
+print(f"      Sample features: {feature_cols[:8]}")
 
 # ── HELPER: EVALUATE MODEL ────────────────────────────────────────────────────
 def evaluate(name, model, X_tr, y_tr, X_te, y_te):
@@ -138,35 +160,22 @@ def evaluate(name, model, X_tr, y_tr, X_te, y_te):
     print(f"    MAE  (hrs)  : {mae_hours:.1f} hours  ← most interpretable")
     print(f"    RMSE (hrs)  : {rmse_hours:.1f} hours")
 
-    return model, r2, mae_hours
+    return {"r2": float(r2), "mae_hours": float(mae_hours), "rmse_hours": float(rmse_hours)}
 
-# ── 4. BASELINE: LINEAR REGRESSION ───────────────────────────────────────────
-print("\n[4/6] Training models...")
+# ── 4. CANDIDATE MODELS (compared on validation) ─────────────────────────────
+print("\n[4/6] Training models, scoring on validation set...")
 print("─" * 50)
 
-lr_model, lr_r2, lr_mae = evaluate(
-    "Baseline — Linear Regression",
-    LinearRegression(),
-    X_train, y_train, X_test, y_test
-)
-
-# ── 5. RANDOM FOREST ─────────────────────────────────────────────────────────
-rf_model, rf_r2, rf_mae = evaluate(
-    "Random Forest (200 trees)",
-    RandomForestRegressor(
+candidates = {
+    "Linear Regression": LinearRegression(),
+    "Random Forest": RandomForestRegressor(
         n_estimators = 200,
         max_depth    = 20,
         min_samples_leaf = 5,
         n_jobs       = -1,
         random_state = 42
     ),
-    X_train, y_train, X_test, y_test
-)
-
-# ── 6. XGBOOST ────────────────────────────────────────────────────────────────
-xgb_model, xgb_r2, xgb_mae = evaluate(
-    "XGBoost",
-    XGBRegressor(
+    "XGBoost": XGBRegressor(
         n_estimators      = 300,
         max_depth         = 7,
         learning_rate     = 0.05,
@@ -175,52 +184,68 @@ xgb_model, xgb_r2, xgb_mae = evaluate(
         random_state      = 42,
         verbosity         = 0
     ),
-    X_train, y_train, X_test, y_test
-)
+}
+
+val_metrics = {
+    name: evaluate(f"{name} (validation)", clone(model), X_fit, y_fit, X_val, y_val)
+    for name, model in candidates.items()
+}
 
 # ── SUMMARY ───────────────────────────────────────────────────────────────────
 print("\n" + "=" * 50)
-print("  MODEL COMPARISON SUMMARY")
+print("  MODEL COMPARISON SUMMARY (validation)")
 print("=" * 50)
 print(f"  {'Model':<30} {'R²':>8} {'MAE (hrs)':>12}")
 print(f"  {'─'*30} {'─'*8} {'─'*12}")
-print(f"  {'Linear Regression':<30} {lr_r2:>8.4f} {lr_mae:>12.1f}")
-print(f"  {'Random Forest':<30} {rf_r2:>8.4f} {rf_mae:>12.1f}")
-print(f"  {'XGBoost':<30} {xgb_r2:>8.4f} {xgb_mae:>12.1f}")
+for name, m in val_metrics.items():
+    print(f"  {name:<30} {m['r2']:>8.4f} {m['mae_hours']:>12.1f}")
 
-# ── PICK BEST MODEL ───────────────────────────────────────────────────────────
-best_name, best_model = max(
-    [("Linear Regression", lr_model),
-     ("Random Forest",     rf_model),
-     ("XGBoost",           xgb_model)],
-    key=lambda x: r2_score(
-        y_test,
-        x[1].predict(X_test)
-    )
-)
-print(f"\n  Best model: {best_name}")
+best_name = max(val_metrics, key=lambda name: val_metrics[name]["r2"])
+print(f"\n  Best model on validation: {best_name}")
 
-# ── FEATURE IMPORTANCE (Random Forest) ───────────────────────────────────────
-print("\n--- Feature Importance (Random Forest) ---")
-importances = pd.Series(
-    rf_model.feature_importances_,
-    index=feature_cols
-).sort_values(ascending=False)
+# ── 5. REFIT BEST MODEL ON TRAIN+VALIDATION, SCORE ON TEST ONCE ──────────────
+print("\n[5/6] Refitting best model on train+validation, scoring on held-out test...")
+X_train_full, X_test, target_encodings = encode_split(X_train_full, y_train_full, X_test)
+X_train_full = X_train_full[feature_cols]
+X_test       = X_test[feature_cols]
 
-print("Top 15 most important features:")
-for feat, imp in importances.head(15).items():
-    bar = "█" * int(imp * 200)
-    print(f"  {feat:<35} {imp:.4f}  {bar}")
+best_model   = clone(candidates[best_name])
+test_metrics = evaluate(f"{best_name} (test)", best_model, X_train_full, y_train_full, X_test, y_test)
 
-# ── SAVE BEST MODEL ───────────────────────────────────────────────────────────
-print(f"\n--- Saving best model and feature list ---")
+# ── FEATURE IMPORTANCE ────────────────────────────────────────────────────────
+if hasattr(best_model, "feature_importances_"):
+    print(f"\n--- Feature Importance ({best_name}) ---")
+    importances = pd.Series(
+        best_model.feature_importances_,
+        index=feature_cols
+    ).sort_values(ascending=False)
+
+    print("Top 15 most important features:")
+    for feat, imp in importances.head(15).items():
+        bar = "█" * int(imp * 200)
+        print(f"  {feat:<35} {imp:.4f}  {bar}")
+
+# ── 6. SAVE BEST MODEL, ENCODINGS, METRICS ────────────────────────────────────
+print(f"\n[6/6] Saving best model, feature list, encodings and metrics...")
 joblib.dump(best_model,   "best_model.pkl")
 joblib.dump(feature_cols, "feature_cols.pkl")
+joblib.dump(target_encodings, "target_encodings.pkl")
+
+# Single source of truth for reported numbers (read by step7_visualization.py)
+metrics = {
+    "rows"       : int(len(X)),
+    "best_model" : best_name,
+    "validation" : val_metrics,
+    "test"       : test_metrics,
+}
+Path("model_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 print(f"  Saved: best_model.pkl")
 print(f"  Saved: feature_cols.pkl")
+print(f"  Saved: target_encodings.pkl")
+print(f"  Saved: model_metrics.json")
 
 # ── SAVE PREDICTIONS TO POSTGRES ─────────────────────────────────────────────
-print("\n--- Saving predictions to PostgreSQL ---")
+print("\n--- Saving test-set predictions to PostgreSQL ---")
 preds_log    = best_model.predict(X_test)
 preds_hours  = np.expm1(preds_log)
 actual_hours = np.expm1(y_test)

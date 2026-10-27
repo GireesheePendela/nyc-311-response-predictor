@@ -1,0 +1,31 @@
+{
+  "rows": 589802,
+  "best_model": "Random Forest",
+  "validation": {
+    "Linear Regression": {
+      "r2": 0.7034172420047708,
+      "mae_hours": 40.00495437511176,
+      "rmse_hours": 100.39450508166982
+    },
+    "Random Forest": {
+      "r2": 0.7869379595852084,
+      "mae_hours": 34.78139364481093,
+      "rmse_hours": 92.6388423633243
+    },
+    "XGBoost": {
+      "r2": 0.7852882083635359,
+      "mae_hours": 35.378879713825675,
+      "rmse_hours": 92.89167802173804
+    }
+  },
+  "test": {
+    "r2": 0.7889161198881275,
+    "mae_hours": 34.29670946078002,
+    "rmse_hours": 91.82224048534002
+  },
+  "deployed": {
+    "model": "Random Forest (25 trees, compressed)",
+    "r2": 0.7799889221811264,
+    "mae_hours": 35.43893192971653
+  }
+}

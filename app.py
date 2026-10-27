@@ -10,6 +10,8 @@ gr = import_module("gradio")
 # ── LOAD MODEL ────────────────────────────────────────────────────────────────
 model        = joblib.load("best_model.pkl")
 feature_cols = joblib.load("feature_cols.pkl")
+# category → mean log_resolution_hours, fit on the training split in step 6
+target_encodings = joblib.load("target_encodings.pkl")
 
 # ── VALID VALUES ──────────────────────────────────────────────────────────────
 AGENCIES = [
@@ -37,46 +39,6 @@ PROBLEM_TYPES = sorted([
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-PROBLEM_TYPE_ENCODINGS = {
-    "HEAT/HOT WATER"            : 4.20,
-    "Noise - Residential"       : 1.10,
-    "Illegal Parking"           : 1.50,
-    "UNSANITARY CONDITION"      : 5.35,
-    "Noise - Commercial"        : 1.20,
-    "PLUMBING"                  : 4.80,
-    "Noise - Vehicle"           : 1.10,
-    "Blocked Driveway"          : 1.40,
-    "PAINT/PLASTER"             : 4.90,
-    "Street Light Condition"    : 5.30,
-    "DOOR/WINDOW"               : 5.30,
-    "Noise - Street/Sidewalk"   : 1.15,
-    "FLOORING/STAIRS"           : 5.30,
-    "Dirty Conditions"          : 3.80,
-    "Derelict Vehicle"          : 3.90,
-    "WATER LEAK"                : 5.10,
-    "Missed Collection"         : 3.75,
-    "Cannabis Retailer"         : 6.70,
-    "Boilers"                   : 6.70,
-    "Smoking or Vaping"         : 6.26,
-    "For Hire Vehicle Complaint": 6.25,
-    "ELEVATOR"                  : 5.37,
-    "APPLIANCE"                 : 5.35,
-    "Vendor Enforcement"        : 0.30,
-    "Traffic"                   : 0.40,
-    "Panhandling"               : 0.85,
-    "Drug Activity"             : 0.95,
-    "Noise - Park"              : 0.95,
-    "Illegal Fireworks"         : 0.90,
-}
-
-LOCATION_TYPE_ENCODINGS = {
-    "RESIDENTIAL BUILDING"      : 4.50,
-    "Street/Sidewalk"           : 2.10,
-    "Store/Commercial"          : 2.80,
-    "Club/Bar/Restaurant"       : 1.50,
-    "Park/Playground"           : 2.20,
-    "UNKNOWN"                   : 3.50,
-}
 
 APP_THEME = gr.themes.Soft(
     font=[gr.themes.GoogleFont("Poppins"), "ui-sans-serif", "sans-serif"],
@@ -226,10 +188,10 @@ Please fill in these fields before predicting:
     row["is_weekend"]   = 1 if DAYS.index(day) >= 5 else 0
     row["is_night"]     = 1 if (int(hour) >= 22 or int(hour) < 6) else 0
 
-    row["problem_type_encoded"]  = PROBLEM_TYPE_ENCODINGS.get(
-        problem_type, 3.50
+    row["problem_type_encoded"]  = target_encodings["problem_type"].get(
+        problem_type, target_encodings["global_mean"]
     )
-    row["location_type_encoded"] = 3.50
+    row["location_type_encoded"] = target_encodings["global_mean"]
 
     agency_col = f"agency_{agency.upper()}"
     if agency_col in row:
