@@ -567,9 +567,20 @@ fig_err_agency  = error_segment_fig(error_agency_df,  "Model Error by Agency",  
 print("\n[5/8] Assembling HTML dashboard...")
 
 def fig_to_html(fig):
+    # Drag a box to zoom; double-click or the reset button returns to the full view
+    fig.update_layout(dragmode="zoom")
     return fig.to_html(full_html=False, include_plotlyjs=False,
                        default_width="100%",
-                       config={"responsive": True, "displayModeBar": False})
+                       config={
+                           "responsive": True,
+                           "displaylogo": False,
+                           # Always-visible toolbar with just zoom in / zoom out / reset
+                           "displayModeBar": True,
+                           "modeBarButtons": [["zoomIn2d", "zoomOut2d", "resetScale2d"]],
+                           # Scroll wheel keeps scrolling the page instead of zooming charts
+                           "scrollZoom": False,
+                           "doubleClick": "reset",
+                       })
 
 def chart_card(fig, heading, context):
     return f"""
@@ -640,7 +651,7 @@ html = f"""<!DOCTYPE html>
         }}
         .grid-2 {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(520px, 100%), 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }}
@@ -711,7 +722,7 @@ html = f"""<!DOCTYPE html>
         {chart_card(
             fig_importance,
             "What Drives Predictions",
-            "Longer bars have more influence on predicted resolution time. Use this to see which complaint details matter most when estimating how long a case will take."
+            "Longer bars have more influence on predicted resolution time. Complaint type dominates because typical resolution times range from minutes to weeks depending on the type (0.3h to 817h median), and it largely determines the agency too, so it absorbs credit that agency would otherwise get. Problem type is encoded from training data only, so this is not leakage."
         )}
         {chart_card(
             fig_compare,
@@ -776,6 +787,13 @@ html = f"""<!DOCTYPE html>
         )}
     </div>
 
+    <script>
+        // Charts render while the page is still loading, before the grid settles.
+        // Redraw each one whenever its card changes size so nothing is clipped.
+        const resizer = new ResizeObserver(entries =>
+            entries.forEach(entry => Plotly.Plots.resize(entry.target)));
+        document.querySelectorAll(".plotly-graph-div").forEach(div => resizer.observe(div));
+    </script>
 </body>
 </html>"""
 
