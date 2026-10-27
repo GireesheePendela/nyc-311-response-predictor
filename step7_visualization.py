@@ -278,6 +278,17 @@ def dark_layout(title):
         yaxis=dict(gridcolor=COLORS["grid"]),
     )
 
+def label_hbars(fig, values, fmt):
+    """Show each bar's value past its end; widen the x-axis so the longest label fits."""
+    values = list(values)
+    fig.update_traces(
+        text=[fmt(v) for v in values],
+        textposition="outside",
+        cliponaxis=False,
+        textfont=dict(color=COLORS["text"], size=12),
+    )
+    fig.update_xaxes(range=[0, max(values) * 1.3])
+
 # ── 5. BUILD CHARTS ───────────────────────────────────────────────────────────
 print("\n[4/8] Building charts...")
 
@@ -335,11 +346,10 @@ fig_importance = go.Figure(go.Bar(
     y=top15.index,
     orientation="h",
     marker_color=bar_colors,
-    text=top15_labels,
     customdata=top15_labels,
-    textposition="outside",
     hovertemplate="%{y}: %{customdata}<extra></extra>"
 ))
+label_hbars(fig_importance, top15_pct.values, lambda v: f"{v:.1f}%")
 fig_importance.update_layout(
     **dark_layout("Top 15 Feature Importances (Random Forest)"),
     xaxis_title="Importance (%)",
@@ -402,11 +412,10 @@ fig_agency = go.Figure(go.Bar(
     orientation="h",
     marker_color=[COLORS["red"] if v > 60 else COLORS["blue"]
                   for v in agency_sorted["median_hours"]],
-    text=[f"{v:.1f}h" for v in agency_sorted["median_hours"]],
-    textposition="outside",
     customdata=agency_sorted["complaints"],
     hovertemplate="Agency: %{y}<br>Median: %{x:.1f}h<br>Complaints: %{customdata:,}<extra></extra>"
 ))
+label_hbars(fig_agency, agency_sorted["median_hours"], lambda v: f"{v:.1f}h")
 fig_agency.update_layout(
     **dark_layout("Median Resolution Time by Agency"),
     xaxis_title="Median Hours",
@@ -447,6 +456,7 @@ fig_types = go.Figure(go.Bar(
     marker_color=COLORS["red"],
     hovertemplate="%{y}: %{x:.1f}h<extra></extra>"
 ))
+label_hbars(fig_types, slowest_sorted["median_hours"], lambda v: f"{v:.1f}h")
 fig_types.update_layout(
     **dark_layout("Top 15 Slowest Complaint Types"),
     xaxis_title="Median Hours",
@@ -463,6 +473,7 @@ fig_fastest = go.Figure(go.Bar(
     marker_color=COLORS["green"],
     hovertemplate="%{y}: %{x:.1f}h<extra></extra>"
 ))
+label_hbars(fig_fastest, fastest_sorted["median_hours"], lambda v: f"{v:.1f}h")
 fig_fastest.update_layout(
     **dark_layout("Top 15 Fastest Complaint Types"),
     xaxis_title="Median Hours",
@@ -558,7 +569,7 @@ print("\n[5/8] Assembling HTML dashboard...")
 def fig_to_html(fig):
     return fig.to_html(full_html=False, include_plotlyjs=False,
                        default_width="100%",
-                       config={"responsive": True, "displaylogo": False})
+                       config={"responsive": True, "displayModeBar": False})
 
 def chart_card(fig, heading, context):
     return f"""
