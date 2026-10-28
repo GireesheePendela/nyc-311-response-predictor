@@ -5,7 +5,7 @@ hf = import_module("huggingface_hub")
 api = hf.HfApi()
 # HF_TOKEN if set, otherwise the token saved by `hf auth login`
 token = os.getenv("HF_TOKEN") or hf.get_token()
-repo = os.getenv("HF_SPACE_REPO", "Gireeshee/nyc-311-response-predictor")
+repo = os.getenv("HF_SPACE_REPO", "GP05/nyc-311-response-predictor")
 
 if not token:
     raise SystemExit(
