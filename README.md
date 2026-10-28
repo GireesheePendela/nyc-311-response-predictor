@@ -17,6 +17,7 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 
 - 🌐 Hugging Face Space: [https://huggingface.co/spaces/Gireeshee/nyc-311-response-predictor](https://huggingface.co/spaces/Gireeshee/nyc-311-response-predictor)
 - 🔗 Direct URL: [https://gireeshee-nyc-311-response-predictor.hf.space](https://gireeshee-nyc-311-response-predictor.hf.space/)
+- 📝 Write-up: [How long will your 311 complaint take?](https://gireesheependela.github.io/nyc-311-response-predictor/) (plain-language findings, built from `docs/`)
 
 ## 📦 What this repo includes
 
@@ -90,6 +91,7 @@ python -m pip install -r requirements.txt
 | — | `compress_model.py` | Refits a 25-tree Random Forest small enough for the Space and records its scores |
 | 7 | `step7_visualization.py` | Builds the interactive `step7_dashboard.html` |
 | 8 | `step8_api.py` | Optional FastAPI service exposing `POST /predict` |
+| 9 | `step9_gallery_data.py` | Reads the CSV directly and writes `docs/findings.json` for the write-up page |
 
 Then run `python app.py` to launch the app on the rebuilt model.
 
