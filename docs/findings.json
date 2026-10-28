@@ -1,0 +1,218 @@
+{
+  "total": 589802,
+  "first_created": "2026-01-01",
+  "last_created": "2026-03-02",
+  "median_hours": 12.3,
+  "share_within_2h": 0.309,
+  "share_within_24h": 0.57,
+  "share_over_7d": 0.085,
+  "by_problem": [
+    {
+      "label": "Noise - Commercial",
+      "median_hours": 0.9,
+      "count": 7331
+    },
+    {
+      "label": "Noise - Street/Sidewalk",
+      "median_hours": 1.0,
+      "count": 8809
+    },
+    {
+      "label": "Noise - Residential",
+      "median_hours": 1.2,
+      "count": 56756
+    },
+    {
+      "label": "Illegal Parking",
+      "median_hours": 1.4,
+      "count": 98115
+    },
+    {
+      "label": "Blocked Driveway",
+      "median_hours": 1.6,
+      "count": 37872
+    },
+    {
+      "label": "Abandoned Vehicle",
+      "median_hours": 2.1,
+      "count": 8168
+    },
+    {
+      "label": "Traffic Signal Condition",
+      "median_hours": 4.0,
+      "count": 10050
+    },
+    {
+      "label": "Water System",
+      "median_hours": 4.2,
+      "count": 11378
+    },
+    {
+      "label": "Street Condition",
+      "median_hours": 23.8,
+      "count": 8906
+    },
+    {
+      "label": "Dirty Condition",
+      "median_hours": 25.2,
+      "count": 8731
+    },
+    {
+      "label": "Snow or Ice",
+      "median_hours": 50.8,
+      "count": 53311
+    },
+    {
+      "label": "HEAT/HOT WATER",
+      "median_hours": 51.0,
+      "count": 131150
+    },
+    {
+      "label": "PLUMBING",
+      "median_hours": 99.6,
+      "count": 11559
+    },
+    {
+      "label": "PAINT/PLASTER",
+      "median_hours": 142.6,
+      "count": 7837
+    },
+    {
+      "label": "UNSANITARY CONDITION",
+      "median_hours": 210.5,
+      "count": 10853
+    }
+  ],
+  "by_borough": [
+    {
+      "label": "STATEN ISLAND",
+      "median_hours": 4.2,
+      "count": 32230
+    },
+    {
+      "label": "QUEENS",
+      "median_hours": 4.7,
+      "count": 142608
+    },
+    {
+      "label": "BROOKLYN",
+      "median_hours": 11.5,
+      "count": 182374
+    },
+    {
+      "label": "MANHATTAN",
+      "median_hours": 22.1,
+      "count": 105768
+    },
+    {
+      "label": "BRONX",
+      "median_hours": 23.4,
+      "count": 126582
+    }
+  ],
+  "heat_by_borough": [
+    {
+      "label": "BRONX",
+      "median_hours": 42.5,
+      "count": 43387
+    },
+    {
+      "label": "STATEN ISLAND",
+      "median_hours": 45.1,
+      "count": 1561
+    },
+    {
+      "label": "MANHATTAN",
+      "median_hours": 46.9,
+      "count": 31172
+    },
+    {
+      "label": "QUEENS",
+      "median_hours": 66.3,
+      "count": 17560
+    },
+    {
+      "label": "BROOKLYN",
+      "median_hours": 71.3,
+      "count": 37469
+    }
+  ],
+  "housing_share_by_borough": [
+    {
+      "label": "BRONX",
+      "share": 0.499,
+      "count": 126582
+    },
+    {
+      "label": "BROOKLYN",
+      "share": 0.298,
+      "count": 182374
+    },
+    {
+      "label": "MANHATTAN",
+      "share": 0.397,
+      "count": 105768
+    },
+    {
+      "label": "QUEENS",
+      "share": 0.173,
+      "count": 142608
+    },
+    {
+      "label": "STATEN ISLAND",
+      "share": 0.092,
+      "count": 32230
+    }
+  ],
+  "by_channel": [
+    {
+      "label": "MOBILE",
+      "median_hours": 2.8,
+      "count": 124049
+    },
+    {
+      "label": "ONLINE",
+      "median_hours": 14.1,
+      "count": 316423
+    },
+    {
+      "label": "PHONE",
+      "median_hours": 34.6,
+      "count": 120687
+    }
+  ],
+  "heat_by_channel": [
+    {
+      "label": "MOBILE",
+      "median_hours": 46.8,
+      "count": 23986
+    },
+    {
+      "label": "ONLINE",
+      "median_hours": 52.0,
+      "count": 90418
+    },
+    {
+      "label": "PHONE",
+      "median_hours": 52.9,
+      "count": 16746
+    }
+  ],
+  "police_share_by_channel": [
+    {
+      "label": "MOBILE",
+      "share": 0.653,
+      "count": 124049
+    },
+    {
+      "label": "ONLINE",
+      "share": 0.411,
+      "count": 316423
+    },
+    {
+      "label": "PHONE",
+      "share": 0.213,
+      "count": 120687
+    }
+  ]
+}
