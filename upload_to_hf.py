@@ -1,12 +1,17 @@
 import os
 from importlib import import_module
 
-api = import_module("huggingface_hub").HfApi()
-token = os.getenv("HF_TOKEN")
+hf = import_module("huggingface_hub")
+api = hf.HfApi()
+# HF_TOKEN if set, otherwise the token saved by `hf auth login`
+token = os.getenv("HF_TOKEN") or hf.get_token()
 repo = os.getenv("HF_SPACE_REPO", "Gireeshee/nyc-311-response-predictor")
 
 if not token:
-    raise SystemExit("Missing HF_TOKEN environment variable")
+    raise SystemExit(
+        "No Hugging Face token found. Run this once, paste a Write token when asked:\n"
+        "  .\\.venv\\Scripts\\hf.exe auth login"
+    )
 
 files = [
     "best_model.pkl",

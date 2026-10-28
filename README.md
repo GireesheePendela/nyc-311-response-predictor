@@ -112,11 +112,13 @@ Open: `http://127.0.0.1:7860`
 From project root:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-$env:HF_TOKEN="your_new_token"
+# once per computer: paste a Write token from huggingface.co/settings/tokens
+.\.venv\Scripts\hf.exe auth login
+
 .\.venv\Scripts\python.exe upload_to_hf.py
-Remove-Item Env:HF_TOKEN
 ```
+
+`upload_to_hf.py` also accepts a token in the `HF_TOKEN` environment variable.
 
 ## 🛠️ Troubleshooting
 
