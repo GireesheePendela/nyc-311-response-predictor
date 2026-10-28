@@ -32,7 +32,7 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 
 - Data: 589,802 NYC 311 complaints ([NYC Open Data](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), Jan–Mar 2026), loaded into PostgreSQL and cleaned
 - Target: `log1p(resolution_hours)`; metrics in hours are reported after converting back
-- Month selector supports 1–12; months outside Jan–Mar are extrapolations
+- Month selector is limited to Jan–Mar, the months covered by the training data
 
 ## 🧪 Methodology
 

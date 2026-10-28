@@ -17,28 +17,33 @@ target_encodings = joblib.load("target_encodings.pkl")
 DEPLOYED_MAE_HOURS = json.loads(Path("model_metrics.json").read_text())["deployed"]["mae_hours"]
 
 # ── VALID VALUES ──────────────────────────────────────────────────────────────
-AGENCIES = [
-    "DCWP", "DEP", "DHS", "DOB", "DOE", "DOHMH",
-    "DOT", "DPR", "DSNY", "HPD", "NYPD", "OOS", "OTI", "TLC"
-]
-
 BOROUGHS = [
     "BRONX", "BROOKLYN", "MANHATTAN", "QUEENS", "STATEN ISLAND"
 ]
 
 CHANNELS = ["MOBILE", "ONLINE", "PHONE", "OTHER"]
 
-PROBLEM_TYPES = sorted([
-    "HEAT/HOT WATER", "Noise - Residential", "Illegal Parking",
-    "UNSANITARY CONDITION", "Noise - Commercial", "PLUMBING",
-    "Noise - Vehicle", "Blocked Driveway", "PAINT/PLASTER",
-    "Street Light Condition", "DOOR/WINDOW", "Noise - Street/Sidewalk",
-    "FLOORING/STAIRS", "Dirty Conditions", "Derelict Vehicle",
-    "WATER LEAK", "Missed Collection", "Cannabis Retailer",
-    "Boilers", "Smoking or Vaping", "For Hire Vehicle Complaint",
-    "ELEVATOR", "APPLIANCE", "Vendor Enforcement", "Traffic",
-    "Panhandling", "Drug Activity", "Noise - Park", "Illegal Fireworks",
-])
+# problem type → the agency that handles it; in the Jan–Mar 2026 data
+# each of these problem types is routed to exactly one agency
+PROBLEM_AGENCY = {
+    "HEAT/HOT WATER": "HPD", "UNSANITARY CONDITION": "HPD", "PLUMBING": "HPD",
+    "PAINT/PLASTER": "HPD", "DOOR/WINDOW": "HPD", "FLOORING/STAIRS": "HPD",
+    "WATER LEAK": "HPD", "ELEVATOR": "HPD", "APPLIANCE": "HPD",
+    "Noise - Residential": "NYPD", "Noise - Commercial": "NYPD",
+    "Noise - Vehicle": "NYPD", "Noise - Street/Sidewalk": "NYPD",
+    "Noise - Park": "NYPD", "Illegal Parking": "NYPD", "Blocked Driveway": "NYPD",
+    "Traffic": "NYPD", "Panhandling": "NYPD", "Drug Activity": "NYPD",
+    "Illegal Fireworks": "NYPD",
+    "Dirty Condition": "DSNY", "Derelict Vehicles": "DSNY",
+    "Missed Collection": "DSNY", "Vendor Enforcement": "DSNY",
+    "Street Light Condition": "DOT",
+    "Boilers": "DOB",
+    "Smoking or Vaping": "DOHMH",
+    "For Hire Vehicle Complaint": "TLC",
+    "Cannabis Retailer": "OOS",
+}
+
+PROBLEM_TYPES = sorted(PROBLEM_AGENCY)
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -156,14 +161,16 @@ def get_dashboard_embed_html():
 """
 
 # ── PREDICTION FUNCTION ───────────────────────────────────────────────────────
-def predict(agency, borough, problem_type, channel, hour, day, month):
+def agency_for(problem_type):
+    return PROBLEM_AGENCY.get(problem_type, "")
+
+
+def predict(problem_type, borough, channel, hour, day, month):
     missing = []
-    if not agency:
-        missing.append("Agency")
-    if not borough:
-        missing.append("Borough")
     if not problem_type:
         missing.append("Problem Type")
+    if not borough:
+        missing.append("Borough")
     if not channel:
         missing.append("Channel")
     if day is None or day == "":
@@ -196,7 +203,7 @@ Please fill in these fields before predicting:
     )
     row["location_type_encoded"] = target_encodings["global_mean"]
 
-    agency_col = f"agency_{agency.upper()}"
+    agency_col = f"agency_{agency_for(problem_type)}"
     if agency_col in row:
         row[agency_col] = 1
 
@@ -280,10 +287,6 @@ with gr.Blocks(
     </div>
     """)
 
-    gr.Markdown("""
-    Predictions for months outside Jan–Mar are extrapolations and may be less reliable.
-    """)
-
     with gr.Tabs():
         with gr.Tab("Dashboard Insights"):
             gr.Markdown("""
@@ -302,35 +305,37 @@ with gr.Blocks(
                 with gr.Row():
                     with gr.Column():
                         gr.Markdown("#### 🧾 Complaint Details")
-                        agency       = gr.Dropdown(choices=AGENCIES,      label="Agency *",       value=None)
-                        borough      = gr.Dropdown(choices=BOROUGHS,      label="Borough *",      value=None)
                         problem_type = gr.Dropdown(choices=PROBLEM_TYPES, label="Problem Type *", value=None)
+                        agency       = gr.Textbox(label="Handling Agency (set by problem type)", interactive=False)
+                        borough      = gr.Dropdown(choices=BOROUGHS,      label="Borough *",      value=None)
                         channel      = gr.Dropdown(choices=CHANNELS,      label="Channel *",      value=None)
 
                     with gr.Column():
                         gr.Markdown("#### 📅 Filing Time")
                         hour  = gr.Slider(minimum=0,  maximum=23, value=9,  step=1,  label="Hour of Day * (0=midnight, 12=noon)")
                         day   = gr.Dropdown(choices=DAYS, label="Day of Week *", value=None)
-                        month = gr.Slider(minimum=1,  maximum=12, value=1,  step=1,  label="Month * (1=Jan, 12=Dec)")
+                        month = gr.Slider(minimum=1,  maximum=3,  value=1,  step=1,  label="Month * (1=Jan, 2=Feb, 3=Mar — the months in the training data)")
 
             output = gr.Markdown(label="Prediction", elem_classes=["prediction-box"])
 
             with gr.Row(elem_classes=["action-row"]):
                 predict_btn = gr.Button("🔍 Predict Resolution Time", variant="primary")
-                clear_btn = gr.ClearButton([agency, borough, problem_type, channel, hour, day, month, output], value="Reset")
+                clear_btn = gr.ClearButton([problem_type, agency, borough, channel, hour, day, month, output], value="Reset")
+
+            problem_type.change(fn=agency_for, inputs=problem_type, outputs=agency)
 
             predict_btn.click(
                 fn=predict,
-                inputs=[agency, borough, problem_type, channel, hour, day, month],
+                inputs=[problem_type, borough, channel, hour, day, month],
                 outputs=output
             )
 
             gr.Markdown("""
             ---
             ### Quick Examples
-            - **HPD + HEAT/HOT WATER + BRONX + Monday 9am** → ~3 days
-            - **NYPD + Noise - Residential + BROOKLYN + Saturday 11pm** → ~1 hour
-            - **DSNY + Missed Collection + QUEENS + Wednesday 8am** → ~1-2 days
+            - **HEAT/HOT WATER (HPD) + BRONX + Phone + Monday 9am, Jan** → ~2.5 days
+            - **Noise - Residential (NYPD) + BROOKLYN + Mobile + Saturday 11pm, Jan** → ~1.5 hours
+            - **Missed Collection (DSNY) + QUEENS + Online + Wednesday 8am, Jan** → ~2.5 days
             """)
 
 demo.launch(server_name="0.0.0.0", server_port=7860, theme=APP_THEME, css=CUSTOM_CSS)
