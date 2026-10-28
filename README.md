@@ -19,6 +19,16 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 - 🔗 Direct URL: [https://gp05-nyc-311-response-predictor.hf.space](https://gp05-nyc-311-response-predictor.hf.space/)
 - 📝 Write-up: [How long will your 311 complaint take?](https://gireesheependela.github.io/nyc-311-response-predictor/) (plain-language findings, built from `docs/`)
 
+## 🔍 Key findings
+
+![Bar charts showing the Bronx is slowest overall at closing 311 complaints but fastest for heat complaints](docs/images/featured-image.png)
+
+![Bar chart showing housing complaints take days to close, while noise and parking complaints close in about an hour](docs/images/chart-complaint-types.png)
+
+![Bar charts showing app complaints close fastest overall, but heat complaints take about two days on every channel](docs/images/chart-filing-channel.png)
+
+![Screenshot of the write-up page with summary statistics and a chart of close times by complaint type](docs/images/screenshot-write-up.png)
+
 ## 📦 What this repo includes
 
 - `app.py` — Gradio app with two tabs:
