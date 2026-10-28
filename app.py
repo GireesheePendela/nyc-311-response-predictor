@@ -4,6 +4,7 @@ import pandas as pd
 import joblib
 from pathlib import Path
 import html
+import json
 
 gr = import_module("gradio")
 
@@ -12,6 +13,8 @@ model        = joblib.load("best_model.pkl")
 feature_cols = joblib.load("feature_cols.pkl")
 # category → mean log_resolution_hours, fit on the training split in step 6
 target_encodings = joblib.load("target_encodings.pkl")
+# mean absolute error of the deployed model on the held-out test set
+DEPLOYED_MAE_HOURS = json.loads(Path("model_metrics.json").read_text())["deployed"]["mae_hours"]
 
 # ── VALID VALUES ──────────────────────────────────────────────────────────────
 AGENCIES = [
@@ -209,8 +212,8 @@ Please fill in these fields before predicting:
     log_pred     = model.predict(X)[0]
     pred_hours   = float(np.expm1(log_pred))
     pred_days    = round(pred_hours / 24, 1)
-    low          = max(0, round(pred_hours - 34.5, 1))
-    high         = round(pred_hours + 34.5, 1)
+    low          = max(0, round(pred_hours - DEPLOYED_MAE_HOURS, 1))
+    high         = round(pred_hours + DEPLOYED_MAE_HOURS, 1)
 
     if pred_hours < 2:
         verdict = "🟢 Very Fast"
@@ -227,8 +230,10 @@ Please fill in these fields before predicting:
 ### Predicted Resolution Time
 **{pred_hours:.1f} hours** ({pred_days} days)
 
-### Confidence Range
+### Typical Error Band
 {low}h – {high}h
+
+<small>Prediction ± {DEPLOYED_MAE_HOURS:.1f} h, the model's average error on held-out complaints. This is the same width for every prediction, not a per-complaint confidence interval.</small>
 
 ### Summary
 """

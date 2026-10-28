@@ -12,6 +12,7 @@ files = [
     "best_model.pkl",
     "feature_cols.pkl",
     "target_encodings.pkl",
+    "model_metrics.json",
     "app.py",
     "step7_dashboard.html",
     "requirements.txt",
