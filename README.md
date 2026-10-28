@@ -54,6 +54,45 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 
 **Error analysis:** the dashboard breaks test-set error down by borough and agency. Absolute error is largest in the Bronx and Manhattan, where complaints take longest (median miss ≈ 9–10 h against a median resolution time of ≈ 22 h). Queens and Staten Island have the smallest misses in hours but the largest relative to their typical resolution time.
 
+## 🔁 Reproduce the pipeline
+
+The raw data is not committed (it is ~700k rows), so the steps below rebuild everything from scratch.
+
+**1. Get the data**
+
+- Open the [311 Service Requests dataset](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9) on NYC Open Data.
+- Filter **Created Date** to 01/01/2026 – 03/31/2026 and export as CSV.
+- Save it in a `data/` folder in the project root (any filename ending in `.csv`).
+
+**2. Set up PostgreSQL**
+
+- Install PostgreSQL and make sure the server is running.
+- Copy `.env.example` to `.env` and fill in your credentials. `step2_load_postgres.py` creates the database named in `DB_NAME` if it does not exist.
+
+**3. Install dependencies**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+**4. Run the steps in order** (each has a matching `run_stepN.ps1` wrapper)
+
+| Step | Script | What it does |
+|---|---|---|
+| 1 | `step1_inspect.py` | Profiles the raw CSV: columns, missing values, date ranges |
+| 2 | `step2_load_postgres.py` | Creates the database and bulk-loads the CSV into `nyc311_raw` |
+| 3 | `step3_clean.py` | Cleans closed complaints into `nyc311_clean`; open ones go to `nyc311_open` |
+| 4 | `step4_features.py` | Builds time, agency, borough and channel features into `nyc311_features` |
+| 5 | `step5_eda.py` | Runs SQL analysis and saves `step5_eda_charts.png` |
+| 6 | `step6_model.py` | Trains and compares models; saves `best_model.pkl`, `feature_cols.pkl`, `target_encodings.pkl`, `model_metrics.json` |
+| — | `compress_model.py` | Refits a 25-tree Random Forest small enough for the Space and records its scores |
+| 7 | `step7_visualization.py` | Builds the interactive `step7_dashboard.html` |
+| 8 | `step8_api.py` | Optional FastAPI service exposing `POST /predict` |
+
+Then run `python app.py` to launch the app on the rebuilt model.
+
 ## 💻 Run locally
 
 From project root:
