@@ -11,6 +11,8 @@ pinned: false
 
 Predict NYC 311 complaint resolution time with a trained model, and explore historical response behavior through an interactive dashboard.
 
+**Data source:** [311 Service Requests from 2010 to Present](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), published by [NYC Open Data](https://opendata.cityofnewyork.us/). This project uses complaints created January–March 2026.
+
 ## 🚀 Live App
 
 - 🌐 Hugging Face Space: [https://huggingface.co/spaces/Gireeshee/nyc-311-response-predictor](https://huggingface.co/spaces/Gireeshee/nyc-311-response-predictor)
@@ -28,7 +30,7 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 
 ## 🤖 Model context
 
-- Data: 589,802 NYC 311 complaints (NYC Open Data, Jan–Mar 2026), loaded into PostgreSQL and cleaned
+- Data: 589,802 NYC 311 complaints ([NYC Open Data](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), Jan–Mar 2026), loaded into PostgreSQL and cleaned
 - Target: `log1p(resolution_hours)`; metrics in hours are reported after converting back
 - Month selector supports 1–12; months outside Jan–Mar are extrapolations
 

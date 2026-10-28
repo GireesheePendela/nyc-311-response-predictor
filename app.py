@@ -271,6 +271,7 @@ with gr.Blocks(
             </div>
         </div>
         <p class="subtle-note">Use <b>Dashboard Insights</b> to understand response patterns, then use <b>Resolution Predictor</b> for new complaints.</p>
+        <p class="subtle-note">Data: <a href="https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9" target="_blank" style="color:#9cc3ff;">311 Service Requests from 2010 to Present</a>, published by <a href="https://opendata.cityofnewyork.us/" target="_blank" style="color:#9cc3ff;">NYC Open Data</a> (Jan–Mar 2026 subset).</p>
     </div>
     """)
 
