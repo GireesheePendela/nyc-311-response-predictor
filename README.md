@@ -11,7 +11,7 @@ pinned: false
 
 Predict NYC 311 complaint resolution time with a trained model, and explore historical response behavior through an interactive dashboard.
 
-**Data source:** [311 Service Requests from 2010 to Present](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), published by [NYC Open Data](https://opendata.cityofnewyork.us/). This project uses complaints created January–March 2026.
+**Data source:** [311 Service Requests from 2010 to Present](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), published by [NYC Open Data](https://opendata.cityofnewyork.us/). This project uses complaints created January 1 – March 2, 2026.
 
 ## 🚀 Live App
 
@@ -31,9 +31,9 @@ Predict NYC 311 complaint resolution time with a trained model, and explore hist
 
 ## 🤖 Model context
 
-- Data: 589,802 NYC 311 complaints ([NYC Open Data](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), Jan–Mar 2026), loaded into PostgreSQL and cleaned
+- Data: 589,802 NYC 311 complaints ([NYC Open Data](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9), created Jan 1 – Mar 2, 2026), loaded into PostgreSQL and cleaned
 - Target: `log1p(resolution_hours)`; metrics in hours are reported after converting back
-- Month selector is limited to Jan–Mar, the months covered by the training data
+- Month selector is limited to Jan–Feb; the data ends on March 2, so March is not covered
 
 ## 🧪 Methodology
 
@@ -62,7 +62,7 @@ The raw data is not committed (it is ~700k rows), so the steps below rebuild eve
 **1. Get the data**
 
 - Open the [311 Service Requests dataset](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9) on NYC Open Data.
-- Filter **Created Date** to 01/01/2026 – 03/31/2026 and export as CSV.
+- Filter **Created Date** to 01/01/2026 – 03/02/2026 and export as CSV.
 - Save it in a `data/` folder in the project root (any filename ending in `.csv`).
 
 **2. Set up PostgreSQL**

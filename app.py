@@ -23,7 +23,7 @@ BOROUGHS = [
 
 CHANNELS = ["MOBILE", "ONLINE", "PHONE", "OTHER"]
 
-# problem type → the agency that handles it; in the Jan–Mar 2026 data
+# problem type → the agency that handles it; in the Jan 1 – Mar 2, 2026 data
 # each of these problem types is routed to exactly one agency
 PROBLEM_AGENCY = {
     "HEAT/HOT WATER": "HPD", "UNSANITARY CONDITION": "HPD", "PLUMBING": "HPD",
@@ -278,12 +278,12 @@ with gr.Blocks(
                 <div class="quick-stat-label">Overall fit quality</div>
             </div>
             <div class="quick-stat">
-                <div class="quick-stat-value">Jan–Mar 2026</div>
+                <div class="quick-stat-value">Jan 1 – Mar 2, 2026</div>
                 <div class="quick-stat-label">Training time window</div>
             </div>
         </div>
         <p class="subtle-note">Use <b>Dashboard Insights</b> to understand response patterns, then use <b>Resolution Predictor</b> for new complaints.</p>
-        <p class="subtle-note">Data: <a href="https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9" target="_blank" style="color:#9cc3ff;">311 Service Requests from 2010 to Present</a>, published by <a href="https://opendata.cityofnewyork.us/" target="_blank" style="color:#9cc3ff;">NYC Open Data</a> (Jan–Mar 2026 subset).</p>
+        <p class="subtle-note">Data: <a href="https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9" target="_blank" style="color:#9cc3ff;">311 Service Requests from 2010 to Present</a>, published by <a href="https://opendata.cityofnewyork.us/" target="_blank" style="color:#9cc3ff;">NYC Open Data</a> (complaints created Jan 1 – Mar 2, 2026).</p>
     </div>
     """)
 
@@ -314,7 +314,7 @@ with gr.Blocks(
                         gr.Markdown("#### 📅 Filing Time")
                         hour  = gr.Slider(minimum=0,  maximum=23, value=9,  step=1,  label="Hour of Day * (0=midnight, 12=noon)")
                         day   = gr.Dropdown(choices=DAYS, label="Day of Week *", value=None)
-                        month = gr.Slider(minimum=1,  maximum=3,  value=1,  step=1,  label="Month * (1=Jan, 2=Feb, 3=Mar — the months in the training data)")
+                        month = gr.Slider(minimum=1,  maximum=2,  value=1,  step=1,  label="Month * (1=Jan, 2=Feb — the months in the training data)")
 
             output = gr.Markdown(label="Prediction", elem_classes=["prediction-box"])
 
