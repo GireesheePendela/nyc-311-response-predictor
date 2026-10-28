@@ -2,5 +2,6 @@
   "python.defaultInterpreterPath": "c:/Users/pende/Desktop/nyc-311-response-predictor/.venv/Scripts/python.exe",
   "python.analysis.extraPaths": [
     "${workspaceFolder}"
-  ]
+  ],
+  "python.terminal.useEnvFile": true
 }
